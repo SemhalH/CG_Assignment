@@ -1,22 +1,27 @@
 import random
 import pygame
 
-# Implemented mouse movement
-# Mouse moves through adjacent cells and eats connecting walls.
-# This version focuses on movement + wall removal visualization.
+# Added backtracking
+# Proper maze generation using DFS + stack:
+# 1) move to random unvisited neighbor
+# 2) push current cell onto stack
+# 3) dead-end => pop stack
+# 4) done when stack empty and all visited
 
 ROWS = 20
 COLS = 20
 CELL_SIZE = 30
 MARGIN = 40
+FPS = 30
 
 WIDTH = COLS * CELL_SIZE + MARGIN * 2
 HEIGHT = ROWS * CELL_SIZE + MARGIN * 2
 
-BG = (248, 248, 248)
-WALL = (25, 25, 25)
+BG = (250, 250, 250)
+WALL = (30, 30, 30)
 MOUSE = (220, 40, 40)
-VISITED = (210, 230, 255)
+VISITED = (230, 242, 255)
+STACK_CLR = (255, 220, 170)
 
 
 def create_full_walls(rows: int, cols: int):
@@ -25,19 +30,52 @@ def create_full_walls(rows: int, cols: int):
     return north_wall, east_wall
 
 
+def neighbors(r, c):
+    items = []
+    if r > 0:
+        items.append((r - 1, c))
+    if r < ROWS - 1:
+        items.append((r + 1, c))
+    if c > 0:
+        items.append((r, c - 1))
+    if c < COLS - 1:
+        items.append((r, c + 1))
+    return items
+
+
+def remove_wall(north_wall, east_wall, a, b):
+    ar, ac = a
+    br, bc = b
+    if br == ar - 1 and bc == ac:
+        north_wall[ar][ac] = 0
+    elif br == ar + 1 and bc == ac:
+        north_wall[br][bc] = 0
+    elif br == ar and bc == ac + 1:
+        east_wall[ar][ac] = 0
+    elif br == ar and bc == ac - 1:
+        east_wall[br][bc] = 0
+
+
+def cell_rect(r, c, pad=2):
+    x = MARGIN + c * CELL_SIZE + pad
+    y = MARGIN + r * CELL_SIZE + pad
+    return x, y, CELL_SIZE - (pad + 1), CELL_SIZE - (pad + 1)
+
+
 def cell_center(r, c):
     x = MARGIN + c * CELL_SIZE + CELL_SIZE // 2
     y = MARGIN + r * CELL_SIZE + CELL_SIZE // 2
     return x, y
 
 
-def draw_maze(screen, north_wall, east_wall, visited, mouse):
+def draw(screen, north_wall, east_wall, visited, stack, current, finished):
     screen.fill(BG)
 
-    for (r, c) in visited:
-        x = MARGIN + c * CELL_SIZE + 2
-        y = MARGIN + r * CELL_SIZE + 2
-        pygame.draw.rect(screen, VISITED, (x, y, CELL_SIZE - 3, CELL_SIZE - 3))
+    for r, c in visited:
+        pygame.draw.rect(screen, VISITED, cell_rect(r, c, 2))
+
+    for r, c in stack:
+        pygame.draw.rect(screen, STACK_CLR, cell_rect(r, c, 6))
 
     for r in range(ROWS):
         for c in range(COLS):
@@ -57,47 +95,39 @@ def draw_maze(screen, north_wall, east_wall, visited, mouse):
         2,
     )
 
-    mx, my = cell_center(*mouse)
-    pygame.draw.circle(screen, MOUSE, (mx, my), CELL_SIZE // 4)
+    if not finished:
+        mx, my = cell_center(*current)
+        pygame.draw.circle(screen, MOUSE, (mx, my), CELL_SIZE // 4)
 
     pygame.display.flip()
 
 
-def neighbors(r, c):
-    cand = []
-    if r > 0:
-        cand.append((r - 1, c))
-    if r < ROWS - 1:
-        cand.append((r + 1, c))
-    if c > 0:
-        cand.append((r, c - 1))
-    if c < COLS - 1:
-        cand.append((r, c + 1))
-    return cand
+def generate_step(north_wall, east_wall, visited, stack, current):
+    unvisited = [n for n in neighbors(*current) if n not in visited]
+    if unvisited:
+        nxt = random.choice(unvisited)
+        stack.append(current)
+        remove_wall(north_wall, east_wall, current, nxt)
+        visited.add(nxt)
+        return nxt, False
 
+    if stack:
+        return stack.pop(), False
 
-def remove_wall(north_wall, east_wall, a, b):
-    ar, ac = a
-    br, bc = b
-    if br == ar - 1 and bc == ac:  # b is above a
-        north_wall[ar][ac] = 0
-    elif br == ar + 1 and bc == ac:  # b is below a
-        north_wall[br][bc] = 0
-    elif br == ar and bc == ac + 1:  # b is right of a
-        east_wall[ar][ac] = 0
-    elif br == ar and bc == ac - 1:  # b is left of a
-        east_wall[br][bc] = 0
+    return current, True
 
 
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Step 2 - Implemented mouse movement")
+    pygame.display.set_caption("Step 3 - Added backtracking")
     clock = pygame.time.Clock()
 
     north_wall, east_wall = create_full_walls(ROWS, COLS)
     current = (random.randrange(ROWS), random.randrange(COLS))
     visited = {current}
+    stack = []
+    finished = False
 
     running = True
     while running:
@@ -105,16 +135,11 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-        # Mouse picks a random unvisited neighbor when possible.
-        unvisited = [n for n in neighbors(*current) if n not in visited]
-        if unvisited:
-            nxt = random.choice(unvisited)
-            remove_wall(north_wall, east_wall, current, nxt)
-            current = nxt
-            visited.add(current)
+        if not finished:
+            current, finished = generate_step(north_wall, east_wall, visited, stack, current)
 
-        draw_maze(screen, north_wall, east_wall, visited, current)
-        clock.tick(20)
+        draw(screen, north_wall, east_wall, visited, stack, current, finished)
+        clock.tick(FPS)
 
     pygame.quit()
 
