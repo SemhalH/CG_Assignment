@@ -29,7 +29,7 @@ It implements the full requirements:
 - `step2 mouse movement`: moves the mouse through random neighbors while removing walls "![alt text](<Screenshots/2 mouse movement.png>)"
 - `step3 backtracking`: adds DFS backtracking to fully carve the maze "![alt text](<Screenshots/3 backtracking.png>)"
 - `step4 bonus cycle solver`: adds one extra opening (cycle) and visual solving, This introduces cycles and can break guaranteed shoulder-to-wall success. "![alt text](<Screenshots/4 Bonus.png>)"
-- `Maze_generator.py`: polished final version with controls and full flow also a custom control panel layout
+- `Maze_generator.py`: polished final version with controls and full flow also a custom control panel layout "![alt text](<Screenshots/5 final maze.png>)"
 
 ## Requirements
 - Python 3.9+ (recommended)
